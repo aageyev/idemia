@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'socket'
+require 'resolv'
 require 'date'
 require 'json'
 require 'logger'
@@ -14,8 +15,14 @@ require 'logger'
 logger = Logger.new(STDOUT)
 logger.level = Logger::WARN
 
-server = TCPServer.new(app_address, app_port)
 begin
+  server = TCPServer.new(app_address, app_port)
+  # getting containername from DNS
+  addr_infos = Socket.ip_address_list
+  ip_address = addr_infos.last.ip_address
+  resolver = Resolv::DNS.new
+  container_name = resolver.getname(ip_address).to_s.split('.').first
+
   logger.warn("Listening on #{app_address}:#{app_port}")
   while connection = server.accept
     while line = connection.gets
@@ -25,8 +32,8 @@ begin
       datetime = DateTime.strptime(date_string, '%d/%m/%Y %H:%M')
       responce = Hash.new
       responce[:timestamp] = datetime.to_time.to_i
-      # responce[:hostname] = datetime.to_i
-      responce[:container] = `hostname`.strip
+      responce[:hostname] = `hostname`.strip
+      responce[:container] = container_name
       responce[:message] = client_msg
       logger.info(line)
       connection.puts "#{responce.to_json}\n"
