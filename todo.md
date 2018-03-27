@@ -18,10 +18,10 @@
         ```json
         {
             "repository": {
-                "repositoryArn": "arn:aws:ecr:eu-west-1:821302506864:repository/idemia-app",
-                "registryId": "821302506864",
+                "repositoryArn": "arn:aws:ecr:eu-west-1:XXXXXXXXXXXX:repository/idemia-app",
+                "registryId": "XXXXXXXXXXXX",
                 "repositoryName": "idemia-app",
-                "repositoryUri": "821302506864.dkr.ecr.eu-west-1.amazonaws.com/idemia-app",
+                "repositoryUri": "XXXXXXXXXXXX.dkr.ecr.eu-west-1.amazonaws.com/idemia-app",
                 "createdAt": 1522172700.0
             }
         }
