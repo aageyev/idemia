@@ -1,0 +1,16 @@
+---
+# tasks file for awscli
+- name:    "install python-pip"
+  apt:     name={{item}} update_cache=yes
+  with_items:
+    - python-pip
+
+- name: "upgrade pip"
+  pip:
+    name: pip
+    extra_args: --upgrade
+
+- name:    "install awscli"
+  pip:
+    name:       awscli
+    extra_args: --user --upgrade

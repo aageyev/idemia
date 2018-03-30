@@ -1,0 +1,15 @@
+---
+version: '2.1'
+services:
+  app:
+    image:   821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:{{ app_version|default('latest')}}
+    environment:
+      APP_LISTEN_ADDRESS: '0.0.0.0'
+      APP_LISTEN_PORT:    {{ idemia_app_port }}
+    ports:
+      - "{{ idemia_app_port }}:{{ idemia_app_port }}"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/app/healthcheck.sh"]
+      interval: 3s
+      timeout:  2s
+      retries:  10

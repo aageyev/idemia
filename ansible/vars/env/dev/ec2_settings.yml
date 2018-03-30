@@ -1,0 +1,49 @@
+---
+ec2:
+  region:          us-east-1
+  vpc_id:          vpc-2d4dc94b
+  ssh_key_name:    admins
+
+app_instance_1:
+  name:            aa-app-1
+  instance_type:   t2.micro
+  zone:            us-east-1a
+  vpc_subnet_id:   subnet-c8671093
+  security_groups: sg-cfd106b3
+  image:           ami-cb9ec1b1
+  data_disk_size:  24
+  tmp_disk_size:   32
+
+db_instance_m:
+  name:            db1
+  instance_type:   m4.xlarge
+  zone:            us-east-1a
+  vpc_subnet_id:   subnet-c8671093
+  security_groups: sg-cfd106b3
+  image:           ami-cb9ec1b1
+  swap_disk_size:  8
+  data_disk_size:  150
+  bk_disk_size:    300
+  tmp_disk_size:   16
+
+db_instance_s:
+  name:            db2
+  instance_type:   m4.xlarge
+  zone:            us-east-1a
+  vpc_subnet_id:   subnet-c8671093
+  security_groups: sg-cfd106b3
+  image:           ami-cb9ec1b1
+  swap_disk_size:  8
+  data_disk_size:  24
+  bk_disk_size:    48
+  tmp_disk_size:   16
+
+#app_instance_2:
+#  instance_type:
+#  zone:
+#  key_name:
+#
+#db_instance:
+#  instance_type:
+#  zone:
+#  key_name:

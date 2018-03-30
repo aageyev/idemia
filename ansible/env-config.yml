@@ -1,0 +1,58 @@
+#!/usr/bin/env ansible-playbook
+###############################
+---
+- name:          "configure docker-compose instance"
+  hosts:         docker-compose
+  become:        yes
+  become_method: sudo
+  gather_facts:  True
+  roles:
+    - docker-compose
+    - awscli
+  environment:
+    PATH: "{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  pre_tasks:
+    - name: "get a timestamp"
+      command: date '+%d/%m/%Y %H:%M'
+      register: timestamp_str
+
+    - name: "set datetime variable"
+      set_fact:
+        timestamp: "{{ timestamp_str.stdout }}"
+  tasks:
+    - name: "login to ecr"
+      command: "aws ecr get-login --region {{ ec2_region }} --no-include-email"
+      register: docker_login_cmd
+
+    - name: "docker login"
+      command: "{{ docker_login_cmd.stdout }}"
+
+    - name: "creates docker-compose app dir"
+      file: path="{{ docker_compose_dir }}" state=directory
+
+    - name: "generate docker-compose.yml file"
+      template:
+        src:   templates/docker-compose.yml.j2
+        dest:  "{{ docker_compose_dir }}/docker-compose.yml"
+
+    - name: "start deployment"
+      command: docker-compose up -d
+      args:
+        chdir: "{{ docker_compose_dir }}"
+
+    - name:         "test"
+      become:       false
+      local_action: shell echo '[{{ timestamp }}] Time to leave' | nc {{ inventory_hostname }} {{ idemia_app_port }}
+      register:     app_resp
+
+    - name:    "trying to parce responce"
+      set_fact:
+        resp_dict: "{{ app_resp.stdout|from_json }}"
+
+    - debug: var=resp_dict['message']
+
+#    - name: "add cloudwatch check"
+#      ping:
+
+# http://docs.ansible.com/ansible/latest/modules/route53_health_check_module.html
+# https://eladnava.com/monitoring-http-health-email-alerts-aws/

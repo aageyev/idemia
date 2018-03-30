@@ -1,2 +1,5 @@
-/idemia.iml
 /.idea
+/*.iml
+.DS_Store
+*.retry
+setenv.sh

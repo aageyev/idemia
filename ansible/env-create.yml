@@ -1,0 +1,69 @@
+#!/usr/bin/env ansible-playbook
+###############################
+---
+- name:         "launching idemia docker-compose aws ec2 environment"
+  hosts:        localhost
+  gather_facts: False
+  pre_tasks:
+    - set_fact:
+        aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY') }}"
+        aws_secret_key: "{{ lookup('env','AWS_SECRET_KEY') }}"
+  tasks:
+    - name: "create ec2 security group for {{ deployment_id }}"
+      ec2_group:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        name:           "{{ deployment_id }}-sg"
+        description:    "sg for {{ deployment_id }}"
+        region:         "{{ ec2_region }}"
+        rules:
+          - proto:   tcp
+            ports:   22
+            cidr_ip: 0.0.0.0/0
+          - proto:   tcp
+            ports:   "{{ idemia_app_port }}"
+            cidr_ip: 0.0.0.0/0
+
+    - name: "create ec2 instance for {{ deployment_id }}"
+      ec2:
+        key_name:              "{{ ec2_ssh_key_pair }}"
+        region:                "{{ ec2_region }}"
+        aws_access_key:        "{{ aws_access_key }}"
+        aws_secret_key:        "{{ aws_secret_key }}"
+        instance_type:         "{{ ec2_instance_type }}"
+        zone:                  "{{ ec2_zone }}"
+        image:                 "{{ ec2_ami }}"
+        group:                 "{{ deployment_id }}-sg"
+        instance_profile_name: "{{ ec2_instance_profile }}"
+        instance_tags:
+          Name: "{{ deployment_id }}"
+        wait:             True
+        wait_timeout:     300
+        user_data:        |
+                #!/bin/bash
+                if grep -q $(hostname) /etc/hosts
+                  then next
+                  else sudo sed -i "s/127.0.0.1 localhost/127.0.0.1 localhost $(hostname)/g" /etc/hosts
+                fi
+                apt-get update -qq
+                apt-get install -qq python2.7
+                update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+      register: ec2
+
+    - name: "add new instance to host group"
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: docker-compose
+      with_items: "{{ ec2.instances }}"
+
+    - name: "wait for ssh to come up"
+      wait_for:
+        host:     "{{ item.public_ip }}"
+        port:     22
+        delay:    60
+        timeout:  320
+        state:    started
+      with_items: "{{ ec2.instances }}"
+
+- name:          "configure instance"
+  import_playbook: env-config.yml

@@ -37,7 +37,7 @@
         docker tag idemia-app:$APP_VERSION $AWS_ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/idemia-app:latest
         docker push $AWS_ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/idemia-app:latest
         ```
-    - Create ECS cluster
+    - Create EC2 docker-compose env
     - Deploy app to ECS cluster
 3. Provisioning with service healthcheck
 4. Create an alert to send an email if health check fails
