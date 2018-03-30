@@ -1,8 +1,14 @@
-# How to deploy Idemia App
+# Deploy Idemia App (TCP daemon)
 
-## Requirement
+1. [Requirement](#requirement)
+2. [Provisioning](#provisioning)
+3. [Configuration](#configuration)
+4. [Launching](#launching)
+5. [Deploy](#deploy)
 
-To provision environment and deploy application you need
+## Requirement <a name="requirement"></a>
+
+To run this code you need:
 * Ansible + boto3 on your workstation
 * AWS account
 * AWS_ACCESS_KEY and AWS_SECRET_KEY
@@ -10,9 +16,10 @@ To provision environment and deploy application you need
 * AWS IAM EC2 role to pull images from ECR
 
 
-## Provision environment
+## Provisioning <a name="provisioning"></a>
 
-### Configuration
+### Configuration <a name="configuration"></a>
+
 Edit ansible/inventory.ini
 and set all variable in [all:vars] section.
 You need to provide at least: 
@@ -49,7 +56,7 @@ idemia_app_port=1235
 
 ```   
 
-### Launch environment
+### Launching <a name="launching"></a>
 
 Navigate to ./ansible directory and run:
 ```bash
@@ -65,4 +72,34 @@ This set of plays:
 * Create route53 health check
 * Create create alarm SNS topic
 
-## Deploy application
+## Deploy <a name="deploy"></a>
+
+Run playbook:
+```bash
+./deploy-app.yml
+```
+and enter $app_version and push 'Enter'.
+And you'll run tasks...
+1. Commit and push code to git repo
+2. Create git tag with Application Version $app_ver
+    ```bash
+    git tag -a 0.0.2 -m "version 0.0.2"
+    git push origin --tags
+    ```
+3. Login to ecr
+   ```bash
+   aws ecr get-login --region eu-west-2 --no-include-email
+   ```
+   copy and run stdout
+4. Build docker image, tag it and push to ecr
+   ```bash
+   docker build -t idemia-app:0.0.2 .
+   docker tag idemia-app:0.0.2 821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:0.0.2
+   docker tag idemia-app:0.0.2 821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:latest
+   docker push 821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:0.0.2
+   docker push 821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:latest
+   ```
+5. Login to environment (according to deployment_id from config), navigate to $docker_compose_dir and run
+   ```bash
+   docker-compose stop; docker-compose pull; docker-compose up -d
+   ```
