@@ -2,7 +2,7 @@
 version: '2.1'
 services:
   app:
-    image:   821302506864.dkr.ecr.eu-west-2.amazonaws.com/idemia-app:{{ app_version|default('latest')}}
+    image:   {{ app_ecr_url }}:{{ app_version|default('latest')}}
     environment:
       APP_LISTEN_ADDRESS: '0.0.0.0'
       APP_LISTEN_PORT:    {{ idemia_app_port }}
