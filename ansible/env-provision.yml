@@ -67,3 +67,6 @@
 
 - name:          "configure instance"
   import_playbook: env-config.yml
+
+- name:          "configure monitoring for the deployment"
+  import_playbook: monitoring.yml

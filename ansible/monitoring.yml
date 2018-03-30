@@ -1,0 +1,58 @@
+#!/usr/bin/env ansible-playbook
+###############################
+---
+- name:         "creating route53_health_check and sns_topic to monitor app"
+  hosts:        localhost
+  gather_facts: False
+  pre_tasks:
+    - set_fact:
+        aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY') }}"
+        aws_secret_key: "{{ lookup('env','AWS_SECRET_KEY') }}"
+  tasks:
+    - ec2_instance_facts:
+        aws_access_key:        "{{ aws_access_key }}"
+        aws_secret_key:        "{{ aws_secret_key }}"
+        region:                "{{ ec2_region }}"
+        filters:
+          instance-state-name: running
+          "tag:Name":          "{{ deployment_id }}"
+      register: ec2
+
+    - debug: var=ec2.instances.0.public_ip_address
+
+    - route53_health_check:
+        state:             present
+        aws_access_key:    "{{ aws_access_key }}"
+        aws_secret_key:    "{{ aws_secret_key }}"
+        region:            "{{ ec2_region }}"
+        ip_address:        "{{ ec2.instances.0.public_ip_address }}"
+        port:              "{{ idemia_app_port }}"
+        type:              TCP
+        request_interval:  10
+        failure_threshold: 2
+      register: app_health_check
+
+#    - debug: var=app_health_check
+
+    - name: "create alarm SNS topic"
+      sns_topic:
+        name: "alarms"
+        state: present
+        aws_access_key:    "{{ aws_access_key }}"
+        aws_secret_key:    "{{ aws_secret_key }}"
+        region:            "{{ ec2_region }}"
+        display_name:      "{{ deployment_id }} SNS topic"
+        delivery_policy:
+          http:
+            defaultHealthyRetryPolicy:
+              minDelayTarget: 2
+              maxDelayTarget: 4
+              numRetries: 3
+              numMaxDelayRetries: 5
+              backoffFunction: "<linear|arithmetic|geometric|exponential>"
+            disableSubscriptionOverrides: True
+            defaultThrottlePolicy:
+              maxReceivesPerSecond: 10
+        subscriptions:
+          - endpoint: "a.ageyev@gmail.com"
+            protocol: "email"
