@@ -15,6 +15,17 @@ require 'logger'
 logger = Logger.new(STDOUT)
 logger.level = Logger::WARN
 
+def validate_date(date_str)
+  valid_formats = ["%d/%m/%Y", "%m/%d/%Y %H:%M"]
+  #see http://www.ruby-doc.org/core-1.9.3/Time.html#method-i-strftime for more
+  valid_formats.each do |format|
+    valid = Time.strptime(date_str, format) rescue false
+    return true if valid
+  end
+
+  return false
+end
+
 begin
   server = TCPServer.new(app_address, app_port)
   # getting containername from DNS
@@ -30,13 +41,21 @@ begin
       date_string = line.split(']').first[1..-1]
       client_msg = line.split(']').last.strip
       datetime = DateTime.strptime(date_string, '%d/%m/%Y %H:%M')
-      responce = Hash.new
-      responce[:timestamp] = datetime.to_time.to_i
-      responce[:hostname] = `hostname`.strip
-      responce[:container] = container_name
-      responce[:message] = client_msg
-      logger.info(line)
-      connection.puts "#{responce.to_json}\n"
+      if validate_date(datetime)
+        responce = Hash.new
+        responce[:timestamp] = datetime.to_time.to_i
+        responce[:hostname] = `hostname`.strip
+        responce[:container] = container_name
+        responce[:message] = client_msg
+        logger.info(line)
+        connection.puts "#{responce.to_json}\n"
+      else
+        responce = Hash.new
+        responce[:error]   = true
+        responce[:message] = 'Invalid input data.'
+        logger.info(line)
+        connection.puts "#{responce.to_json}\n"
+      end
     end
     connection.close
   end
