@@ -18,7 +18,7 @@
           "tag:Name":          "{{ deployment_id }}"
       register: ec2
 
-    - debug: var=ec2.instances.0.public_ip_address
+#    - debug: var=ec2.instances.0.public_ip_address
 
     - route53_health_check:
         state:             present

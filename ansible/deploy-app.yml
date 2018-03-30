@@ -1,25 +1,47 @@
 #!/usr/bin/env ansible-playbook
 ---
-- name:         "deploy application"
+- name:          "configure instance"
+  import_playbook: build-app.yml
+
+- name:         "add ec2 instances with docker to deployment inventory"
   hosts:        localhost
   gather_facts: False
-  vars_prompt:
-    - name:   "app_version"
-      prompt: "Application version"
-      private: no
-      default: "latest"
-    - name:   "tag_as_latest"
-      prompt: "Tag as latest?"
-      private: no
-      default: no
   pre_tasks:
-    - command: pwd
-      args:
-        chdir: "{{ playbook_dir }}/.."
-      register: pwd_dir
-    - name: "set application dir"
+    - set_fact:
+        aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY') }}"
+        aws_secret_key: "{{ lookup('env','AWS_SECRET_KEY') }}"
+  tasks:
+    - ec2_instance_facts:
+        aws_access_key:        "{{ aws_access_key }}"
+        aws_secret_key:        "{{ aws_secret_key }}"
+        region:                "{{ ec2_region }}"
+        filters:
+          instance-state-name: running
+          "tag:Name":          "{{ deployment_id }}"
+      register: ec2
+
+#    - debug: var=ec2.instances.0.public_ip_address
+
+    - name: "add new instance to host group"
+      add_host:
+        hostname: "{{ ec2.instances.0.public_ip_address }}"
+        groupname: docker-compose
+
+- name:          "update docker-compose deployment with new version"
+  hosts:         docker-compose
+  become:        yes
+  become_method: sudo
+  gather_facts:  True
+  environment:
+    PATH: "{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  pre_tasks:
+    - name: "get a timestamp"
+      command: date '+%d/%m/%Y %H:%M'
+      register: timestamp_str
+
+    - name: "set datetime variable"
       set_fact:
-        app_dir: "{{ pwd_dir.stdout }}"
+        timestamp: "{{ timestamp_str.stdout }}"
   tasks:
     - name: "login to ecr"
       command: "aws ecr get-login --region {{ ec2_region }} --no-include-email"
@@ -28,23 +50,28 @@
     - name: "docker login"
       command: "{{ docker_login_cmd.stdout }}"
 
-    - name: "build an image and push it to a private repo"
-      docker_image:
-        path:       "{{ app_dir }}"
-        name:       idemia-app
-        repository: "{{ app_ecr_url }}"
-        tag:        "{{ app_version }}"
-        push:       yes
+    - name: "stop app"
+      command: docker-compose stop
+      args:
+        chdir: "{{ docker_compose_dir }}"
 
-    - name: "build an image and push it to a private repo"
-      docker_image:
-        path:       "{{ app_dir }}"
-        name:       idemia-app
-        repository: "{{ app_ecr_url }}"
-        tag:        latest
-        push:       yes
-      when: tag_as_latest|bool
+    - name: "pull app updates"
+      command: docker-compose pull
+      args:
+        chdir: "{{ docker_compose_dir }}"
 
-#    - ping:
-#    - debug: var=app_dir
+    - name: "start app"
+      command: docker-compose up -d
+      args:
+        chdir: "{{ docker_compose_dir }}"
 
+    - name:         "test"
+      become:       false
+      local_action: shell echo '[{{ timestamp }}] Time to leave' | nc {{ inventory_hostname }} {{ idemia_app_port }}
+      register:     app_resp
+
+    - name:    "trying to parce responce"
+      set_fact:
+        resp_dict: "{{ app_resp.stdout|from_json }}"
+
+    - debug: var=resp_dict['message']

@@ -1,0 +1,65 @@
+#!/usr/bin/env ansible-playbook
+---
+- name:         "deploy application"
+  hosts:        localhost
+  gather_facts: False
+  vars_prompt:
+    - name:   "app_version"
+      prompt: "Application version"
+      private: no
+      default: "latest"
+    - name:   "tag_as_latest"
+      prompt: "Tag as latest?"
+      private: no
+      default: no
+  pre_tasks:
+    - command: pwd
+      args:
+        chdir: "{{ playbook_dir }}/.."
+      register: pwd_dir
+    - name: "set application dir"
+      set_fact:
+        app_dir: "{{ pwd_dir.stdout }}"
+  tasks:
+    - name: "login to ecr"
+      command: "aws ecr get-login --region {{ ec2_region }} --no-include-email"
+      register: docker_login_cmd
+
+    - name: "docker login"
+      command: "{{ docker_login_cmd.stdout }}"
+
+#    - name: "build an image and push it to a private repo"
+#      docker_image:
+#        path:       "{{ app_dir }}"
+#        name:       idemia-app
+#        repository: "{{ app_ecr_url }}"
+#        tag:        "{{ app_version }}"
+#        push:       yes
+
+    - name: "docker build"
+      command: "docker build -t idemia-app:{{ app_version }} ."
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: "docker tag {{ app_version }}"
+      command: "docker tag idemia-app:{{ app_version }} {{ app_ecr_url }}:{{ app_version }}"
+
+    - name: "docker push {{ app_version }}"
+      command: "docker push {{ app_ecr_url }}:{{ app_version }}"
+
+    - name: "docker tag latest"
+      command: "docker tag idemia-app:{{ app_version }} {{ app_ecr_url }}:latest"
+      when: (tag_as_latest|bool)
+
+    - name: "docker push latest"
+      command: "docker push {{ app_ecr_url }}:latest"
+      when: (tag_as_latest|bool)
+
+#    - name: "build an image and push it to a private repo"
+#      docker_image:
+#        path:       "{{ app_dir }}"
+#        name:       idemia-app
+#        repository: "{{ app_ecr_url }}"
+#        tag:        latest
+#        push:       yes
+#      when: (tag_as_latest|bool)
