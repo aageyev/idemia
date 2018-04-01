@@ -20,7 +20,7 @@ To run this code you need:
 
 ### Configuration <a name="configuration"></a>
 
-Edit ansible/inventory.ini
+#### Edit ansible/inventory.ini
 and set all variable in [all:vars] section.
 You need to provide at least: 
 * ecr repository url 
@@ -55,6 +55,15 @@ docker_compose_dir=/opt/idemia
 idemia_app_port=1235
 
 ```   
+
+#### Set environment variables to access AWS
+
+```bash
+AWS_ACCESS_KEY='XXXXXXXXXXXXXXXXXXXX'
+export $AWS_ACCESS_KEY
+AWS_SECRET_KEY='XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+export $AWS_SECRET_KEY
+```
 
 ### Launching <a name="launching"></a>
 
